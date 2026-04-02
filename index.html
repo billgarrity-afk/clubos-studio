@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>ClubOS Studio</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#0D1F17;--bg-mid:#111E16;--bg-card:#152318;--bg-input:#0A1710;
+    --green:#4A8C5C;--green-glow:#3D7A52;--green-dim:rgba(74,140,92,0.15);
+    --gold:#C9A84C;--gold-dim:rgba(201,168,76,0.18);--gold-faint:rgba(201,168,76,0.07);
+    --white:#F0EBE1;--white-dim:rgba(240,235,225,0.5);--white-faint:rgba(240,235,225,0.12);
+    --sep:rgba(201,168,76,0.13);--red:#D95B5B;--red-dim:rgba(217,91,91,0.12);
+    --blue:#5B8FD9;--blue-dim:rgba(91,143,217,0.12);
+    --radius:10px;--radius-sm:6px;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--white);min-height:100vh;padding-bottom:100px;}
+
+  /* ── HEADER ────────────────────────────────── */
+  .app-header{background:var(--bg-mid);border-bottom:1px solid var(--sep);padding:0 20px;height:60px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
+  .logo{display:flex;align-items:center;gap:10px;}
+  .logo-mark{width:34px;height:34px;background:var(--gold);border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:600;color:var(--bg);}
+  .logo-text{line-height:1;}
+  .logo-eyebrow{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--gold);font-weight:600;}
+  .logo-name{font-family:'Cormorant Garamond',serif;font-size:19px;color:var(--white);font-weight:500;}
+  .header-right{display:flex;align-items:center;gap:10px;}
+  .club-chip{font-size:12px;color:var(--white-dim);background:var(--white-faint);border:1px solid var(--sep);border-radius:20px;padding:4px 12px;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .publish-btn{background:var(--gold);color:var(--bg);border:none;border-radius:var(--radius-sm);padding:8px 16px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;transition:opacity 0.15s;white-space:nowrap;}
+  .publish-btn:active{opacity:0.8;}
+  .publish-btn.busy{opacity:0.5;pointer-events:none;}
+
+  /* ── TOAST ─────────────────────────────────── */
+  .toast{position:fixed;top:72px;left:50%;transform:translateX(-50%) translateY(-8px);background:var(--green);color:var(--white);padding:9px 20px;border-radius:30px;font-size:13px;font-weight:600;z-index:300;opacity:0;transition:all 0.25s ease;pointer-events:none;white-space:nowrap;max-width:90vw;text-align:center;}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+  /* ── TABS ──────────────────────────────────── */
+  .tab-nav{background:var(--bg-mid);border-bottom:1px solid var(--sep);display:flex;position:sticky;top:60px;z-index:99;}
+  .tab-btn{flex:1;padding:0 12px;height:50px;background:none;border:none;color:var(--white-dim);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;border-bottom:2px solid transparent;transition:all 0.2s;display:flex;align-items:center;justify-content:center;gap:7px;}
+  .tab-btn.active{color:var(--gold);border-bottom-color:var(--gold);}
+  .tab-pane{display:none;padding:16px 16px;}
+  .tab-pane.active{display:block;}
+
+  /* ── VOICE PANEL ───────────────────────────── */
+  .voice-panel {
+    background: var(--bg-card);
+    border: 1px solid var(--sep);
+    border-radius: var(--radius);
+    margin-bottom: 16px;
+    overflow: hidden;
+    transition: border-color 0.3s;
+  }
+  .voice-panel.listening { border-color: var(--red); }
+  .voice-panel.processing { border-color: var(--gold); }
+  .voice-panel.success { border-color: var(--green); }
+
+  .voice-header {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 16px;
+  }
+  .mic-btn {
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    border: 2px solid var(--sep);
+    background: var(--bg-input);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; cursor: pointer;
+    transition: all 0.2s; flex-shrink: 0;
+    position: relative;
+  }
+  .mic-btn:hover { border-color: var(--gold); }
+  .mic-btn.listening {
+    background: rgba(217,91,91,0.15);
+    border-color: var(--red);
+    animation: micPulse 1s ease-in-out infinite;
+  }
+  .mic-btn.processing {
+    background: var(--gold-faint);
+    border-color: var(--gold);
+    animation: micPulse 0.6s ease-in-out infinite;
+  }
+  @keyframes micPulse {
+    0%,100%{transform:scale(1);}
+    50%{transform:scale(1.08);}
+  }
+  .voice-info { flex: 1; min-width: 0; }
+  .voice-label {
+    font-size: 12px; font-weight: 600; color: var(--white);
+    margin-bottom: 2px;
+  }
+  .voice-hint {
+    font-size: 11px; color: var(--white-dim); line-height: 1.4;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .voice-hint.listening { color: var(--red); }
+  .voice-hint.processing { color: var(--gold); }
+  .voice-hint.success { color: var(--green); }
+
+  .voice-transcript {
+    margin: 0 16px 12px;
+    padding: 10px 12px;
+    background: var(--bg-input);
+    border-radius: var(--radius-sm);
+    font-size: 13px; color: var(--white);
+    line-height: 1.5; min-height: 38px;
+    font-style: italic;
+    display: none;
+  }
+  .voice-transcript.visible { display: block; }
+
+  .voice-result {
+    margin: 0 16px 12px;
+    padding: 10px 12px;
+    border-radius: var(--radius-sm);
+    font-size: 13px; line-height: 1.5;
+    display: none;
+  }
+  .voice-result.visible { display: block; }
+  .voice-result.ok { background: var(--green-dim); color: var(--white); border-left: 3px solid var(--green); }
+  .voice-result.warn { background: rgba(201,168,76,0.1); color: var(--gold); border-left: 3px solid var(--gold); }
+  .voice-result.err { background: var(--red-dim); color: var(--red); border-left: 3px solid var(--red); }
+
+  /* text fallback */
+  .voice-text-row {
+    display: flex; gap: 8px; padding: 0 16px 12px; display: none;
+  }
+  .voice-text-row.visible { display: flex; }
+  .voice-text-row input {
+    flex: 1; font-size: 13px; padding: 8px 10px;
+  }
+  .voice-send-btn {
+    background: var(--gold); color: var(--bg); border: none;
+    border-radius: var(--radius-sm); padding: 8px 14px;
+    font-family: 'DM Sans',sans-serif; font-size: 13px;
+    font-weight: 700; cursor: pointer; flex-shrink: 0;
+  }
+
+  /* ── SEC LABEL ─────────────────────────────── */
+  .sec-label{font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--gold);font-weight:600;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;}
+
+  /* ── STATUS BAR ────────────────────────────── */
+  .status-bar{background:var(--bg-card);border:1px solid var(--sep);border-radius:var(--radius);padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:10px;}
+  .live-indicator{display:flex;align-items:center;gap:8px;}
+  .live-dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 7px var(--green);animation:pulse 2s ease-in-out infinite;}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.35}}
+  .live-text{font-size:12px;color:var(--white-dim);}
+  .live-text strong{color:var(--white);}
+  .status-date{font-family:'DM Mono',monospace;font-size:11px;color:var(--white-dim);}
+
+  /* ── DATE NAV ──────────────────────────────── */
+  .date-nav{display:flex;align-items:center;gap:8px;margin-bottom:16px;}
+  .date-nav-btn{background:var(--bg-card);border:1px solid var(--sep);border-radius:var(--radius-sm);width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--white-dim);font-size:16px;transition:all 0.15s;flex-shrink:0;}
+  .date-nav-btn:hover{border-color:var(--gold);color:var(--gold);}
+  .date-display{flex:1;text-align:center;font-family:'Cormorant Garamond',serif;font-size:18px;color:var(--white);font-weight:500;}
+  .today-btn{background:var(--gold-faint);border:1px solid var(--gold-dim);border-radius:var(--radius-sm);padding:6px 12px;color:var(--gold);font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;font-family:'DM Sans',sans-serif;}
+
+  /* ── SPORT ─────────────────────────────────── */
+  .sport-selector{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:16px;}
+  .sport-btn{background:var(--bg-card);border:1px solid var(--sep);border-radius:var(--radius-sm);padding:10px;color:var(--white-dim);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;text-align:center;transition:all 0.2s;display:flex;align-items:center;justify-content:center;gap:6px;}
+  .sport-btn.active{background:var(--gold-faint);border-color:var(--gold);color:var(--gold);}
+
+  /* ── COURT CARDS ───────────────────────────── */
+  .courts-grid{display:flex;flex-direction:column;gap:10px;margin-bottom:16px;}
+  .court-card{background:var(--bg-card);border:1px solid var(--sep);border-radius:var(--radius);overflow:hidden;animation:fadeUp 0.25s ease both;}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+  .court-header{padding:11px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--sep);background:rgba(201,168,76,0.04);}
+  .court-label{font-family:'Cormorant Garamond',serif;font-size:17px;font-weight:600;color:var(--white);}
+  .court-sport-badge{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;font-weight:600;padding:3px 9px;border-radius:20px;}
+  .sport-tennis{background:rgba(74,140,92,0.15);color:var(--green);border:1px solid rgba(74,140,92,0.3);}
+  .sport-pickleball{background:rgba(91,143,217,0.12);color:var(--blue);border:1px solid rgba(91,143,217,0.25);}
+  .slots-list{padding:4px 0;}
+  .slot-row{display:flex;align-items:center;padding:9px 16px;gap:10px;border-bottom:1px solid rgba(240,235,225,0.04);}
+  .slot-row:last-child{border-bottom:none;}
+  .slot-time{font-family:'DM Mono',monospace;font-size:12px;color:var(--white-dim);min-width:100px;flex-shrink:0;}
+  .slot-time.now{color:var(--green);font-weight:500;}
+  .slot-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+  .dot-booked{background:var(--gold);}
+  .dot-available{background:var(--green);}
+  .dot-clinic{background:var(--blue);}
+  .dot-closed{background:rgba(240,235,225,0.2);}
+  .slot-info{flex:1;min-width:0;}
+  .slot-name{font-size:13px;color:var(--white);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .slot-name.empty{color:var(--white-faint);font-style:italic;font-weight:400;}
+  .slot-sub{font-size:11px;color:var(--white-dim);margin-top:1px;}
+  .slot-del{background:none;border:1px solid var(--sep);border-radius:4px;padding:3px 8px;color:var(--white-dim);font-size:11px;cursor:pointer;transition:all 0.15s;font-family:'DM Sans',sans-serif;flex-shrink:0;}
+  .slot-del:hover{border-color:var(--red);color:var(--red);}
+  .empty-court{padding:14px;font-size:12px;color:var(--white-faint);font-style:italic;text-align:center;}
+  .loading-row{text-align:center;padding:24px;color:var(--white-faint);font-size:13px;}
+
+  /* ── FORMS ─────────────────────────────────── */
+  .inline-form{background:var(--bg-card);border:1px solid var(--gold-dim);border-radius:var(--radius);padding:16px;margin-bottom:14px;display:none;}
+  .inline-form.open{display:block;}
+  .form-title{font-family:'Cormorant Garamond',serif;font-size:17px;font-weight:500;color:var(--white);margin-bottom:14px;}
+  .form-row{margin-bottom:10px;}
+  .form-label{display:block;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--white-dim);font-weight:600;margin-bottom:5px;}
+  input,select,textarea{width:100%;background:var(--bg-input);border:1px solid var(--sep);border-radius:var(--radius-sm);padding:9px 12px;color:var(--white);font-family:'DM Sans',sans-serif;font-size:14px;outline:none;transition:border-color 0.2s;-webkit-appearance:none;}
+  input:focus,select:focus,textarea:focus{border-color:var(--gold);}
+  input::placeholder{color:var(--white-faint);}
+  select option{background:var(--bg-mid);}
+  textarea{resize:vertical;}
+  .form-2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;}
+  .form-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px;}
+  .form-actions{display:flex;gap:8px;margin-top:14px;}
+  .btn{padding:9px 16px;border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:all 0.15s;display:inline-flex;align-items:center;gap:6px;}
+  .btn:active{transform:scale(0.97);}
+  .btn-gold{background:var(--gold);color:var(--bg);}
+  .btn-ghost{background:transparent;border:1px solid var(--sep);color:var(--white-dim);}
+  .btn-ghost:hover{border-color:var(--gold);color:var(--gold);}
+  .btn-sm{padding:6px 12px;font-size:12px;}
+  .btn-full{width:100%;justify-content:center;}
+  .add-trigger{width:100%;background:var(--gold-faint);border:1px dashed var(--gold-dim);border-radius:var(--radius);padding:13px;color:var(--gold);font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:all 0.2s;font-family:'DM Sans',sans-serif;margin-bottom:8px;}
+  .add-trigger:hover{background:rgba(201,168,76,0.12);}
+
+  /* ── ANNOUNCEMENTS ─────────────────────────── */
+  .ann-card{background:var(--bg-card);border:1px solid var(--sep);border-radius:var(--radius);padding:14px;margin-bottom:10px;position:relative;animation:fadeUp 0.25s ease both;}
+  .ann-del{position:absolute;top:12px;right:12px;background:none;border:none;color:var(--white-faint);font-size:18px;cursor:pointer;transition:color 0.15s;line-height:1;}
+  .ann-del:hover{color:var(--red);}
+  .ann-top{display:flex;gap:10px;align-items:flex-start;margin-bottom:10px;}
+  .ann-icon{width:40px;height:40px;background:var(--gold-faint);border:1px solid var(--gold-dim);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;}
+  .ann-title-text{font-size:14px;font-weight:600;color:var(--white);margin-bottom:2px;}
+  .ann-body-text{font-size:12px;color:var(--white-dim);line-height:1.4;}
+  .ann-meta{display:flex;gap:7px;align-items:center;margin-bottom:9px;}
+  .pill{font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;padding:3px 9px;border-radius:20px;}
+  .pill-active{background:rgba(74,140,92,0.15);color:var(--green);border:1px solid rgba(74,140,92,0.3);}
+  .pill-scheduled{background:var(--blue-dim);color:var(--blue);border:1px solid rgba(91,143,217,0.25);}
+  .pill-draft{background:var(--white-faint);color:var(--white-dim);border:1px solid var(--sep);}
+  .ann-dates{font-size:11px;color:var(--white-faint);font-family:'DM Mono',monospace;}
+  .ann-actions{display:flex;gap:7px;}
+
+  /* ── SETTINGS ──────────────────────────────── */
+  .s-section{margin-bottom:22px;}
+  .s-card{background:var(--bg-card);border:1px solid var(--sep);border-radius:var(--radius);padding:16px;}
+</style>
+</head>
+<body>
+
+<header class="app-header">
+  <div class="logo">
+    <div class="logo-mark" id="logoMark">C</div>
+    <div class="logo-text">
+      <div class="logo-eyebrow">ClubOS</div>
+      <div class="logo-name">Studio</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="club-chip" id="clubChip">Loading…</div>
+    <button class="publish-btn" id="publishBtn" onclick="publishAll()">↑ Publish</button>
+  </div>
+</header>
+
+<div class="toast" id="toast"></div>
+
+<nav class="tab-nav">
+  <button class="tab-btn active" onclick="switchTab('courts',this)">🎾 Courts</button>
+  <button class="tab-btn" onclick="switchTab('announcements',this)">📢 Announcements</button>
+  <button class="tab-btn" onclick="switchTab('settings',this)">⚙️ Settings</button>
+</nav>
+
+<!-- ═══════════════ COURTS ═══════════════ -->
+<div class="tab-pane active" id="tab-courts">
+
+  <!-- VOICE PANEL -->
+  <div class="voice-panel" id="voiceCourts">
+    <div class="voice-header">
+      <button class="mic-btn" id="micCourts" onclick="toggleVoice('courts')" title="Tap to speak">🎤</button>
+      <div class="voice-info">
+        <div class="voice-label">ClubOS Voice</div>
+        <div class="voice-hint" id="hintCourts">Tap mic — say "Book court 3 for Sarah, 10 to 11:30" or "Close court 2 all morning"</div>
+      </div>
+    </div>
+    <div class="voice-transcript" id="transcriptCourts"></div>
+    <div class="voice-result" id="resultCourts"></div>
+    <div class="voice-text-row" id="textRowCourts">
+      <input type="text" id="textInputCourts" placeholder="Type a command instead…" onkeydown="if(event.key==='Enter')sendText('courts')">
+      <button class="voice-send-btn" onclick="sendText('courts')">→</button>
+    </div>
+  </div>
+
+  <div class="status-bar">
+    <div class="live-indicator">
+      <div class="live-dot"></div>
+      <span class="live-text">Court display <strong>live</strong></span>
+    </div>
+    <div class="status-date" id="statusDate"></div>
+  </div>
+
+  <div class="date-nav">
+    <button class="date-nav-btn" onclick="shiftDate(-1)">‹</button>
+    <div class="date-display" id="dateDisplay"></div>
+    <button class="today-btn" onclick="goToday()">Today</button>
+    <button class="date-nav-btn" onclick="shiftDate(1)">›</button>
+  </div>
+
+  <div class="sport-selector">
+    <button class="sport-btn active" id="btn-tennis" onclick="selectSport('tennis',this)">🎾 Tennis</button>
+    <button class="sport-btn" id="btn-pickleball" onclick="selectSport('pickleball',this)">🏓 Pickleball</button>
+  </div>
+
+  <div class="inline-form" id="addForm">
+    <div class="form-title">New Reservation</div>
+    <div class="form-3">
+      <div><label class="form-label">Court #</label><input type="number" id="f-court" min="1" max="20" placeholder="1"></div>
+      <div><label class="form-label">Start</label><input type="time" id="f-start" value="08:00"></div>
+      <div><label class="form-label">End</label><input type="time" id="f-end" value="09:30"></div>
+    </div>
+    <div class="form-row"><label class="form-label">Member Name</label><input type="text" id="f-name" placeholder="First Last"></div>
+    <div class="form-2">
+      <div><label class="form-label">Sport</label><select id="f-sport"><option value="tennis">Tennis</option><option value="pickleball">Pickleball</option></select></div>
+      <div><label class="form-label">Type</label><select id="f-type"><option value="booked">Booked</option><option value="clinic">Clinic</option><option value="closed">Closed</option><option value="available">Open Play</option></select></div>
+    </div>
+    <div class="form-row"><label class="form-label">Notes (optional)</label><input type="text" id="f-notes" placeholder="lesson, tournament prep…"></div>
+    <div class="form-actions">
+      <button class="btn btn-gold" onclick="saveReservation()">Save</button>
+      <button class="btn btn-ghost" onclick="closeAddForm()">Cancel</button>
+    </div>
+  </div>
+
+  <button class="add-trigger" onclick="openAddForm()">+ Add Reservation</button>
+  <div class="sec-label" id="courtsLabel">Courts — Today</div>
+  <div class="courts-grid" id="courtsGrid"><div class="loading-row">Loading courts…</div></div>
+</div>
+
+<!-- ═══════════════ ANNOUNCEMENTS ═══════════════ -->
+<div class="tab-pane" id="tab-announcements">
+
+  <!-- VOICE PANEL -->
+  <div class="voice-panel" id="voiceAnn">
+    <div class="voice-header">
+      <button class="mic-btn" id="micAnn" onclick="toggleVoice('announcements')" title="Tap to speak">🎤</button>
+      <div class="voice-info">
+        <div class="voice-label">ClubOS Voice</div>
+        <div class="voice-hint" id="hintAnn">Tap mic — say "Add announcement: Member Guest Tournament, April 5th, 8am shotgun"</div>
+      </div>
+    </div>
+    <div class="voice-transcript" id="transcriptAnn"></div>
+    <div class="voice-result" id="resultAnn"></div>
+    <div class="voice-text-row" id="textRowAnn">
+      <input type="text" id="textInputAnn" placeholder="Type a command instead…" onkeydown="if(event.key==='Enter')sendText('announcements')">
+      <button class="voice-send-btn" onclick="sendText('announcements')">→</button>
+    </div>
+  </div>
+
+  <div class="status-bar">
+    <div class="live-indicator">
+      <div class="live-dot"></div>
+      <span class="live-text">Rotates on <strong>display</strong></span>
+    </div>
+    <div class="live-text" id="annCount" style="font-size:12px;color:var(--white-dim);">0 active</div>
+  </div>
+
+  <div class="sec-label">Announcements</div>
+  <div id="annList"></div>
+
+  <div class="inline-form" id="annForm">
+    <div class="form-title" id="annFormTitle">New Announcement</div>
+    <div class="form-2">
+      <div><label class="form-label">Icon / Emoji</label><input type="text" id="af-icon" placeholder="🏆" maxlength="4" style="font-size:22px;text-align:center;"></div>
+      <div><label class="form-label">Status</label><select id="af-status"><option value="active">Active — Show Now</option><option value="scheduled">Scheduled</option><option value="draft">Draft — Hidden</option></select></div>
+    </div>
+    <div class="form-row"><label class="form-label">Title</label><input type="text" id="af-title" placeholder="Member-Guest Tournament"></div>
+    <div class="form-row"><label class="form-label">Body</label><textarea id="af-body" placeholder="Details for members…" rows="3"></textarea></div>
+    <div class="form-2">
+      <div><label class="form-label">Show From</label><input type="date" id="af-from"></div>
+      <div><label class="form-label">Show Until</label><input type="date" id="af-until"></div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-gold" onclick="saveAnn()">Save</button>
+      <button class="btn btn-ghost" onclick="closeAnnForm()">Cancel</button>
+    </div>
+  </div>
+
+  <button class="add-trigger" onclick="openAnnForm()">+ Add Announcement</button>
+</div>
+
+<!-- ═══════════════ SETTINGS ═══════════════ -->
+<div class="tab-pane" id="tab-settings">
+  <div class="s-section">
+    <div class="sec-label">Club</div>
+    <div class="s-card">
+      <div class="form-row"><label class="form-label">Club Name</label><input type="text" id="s-name" placeholder="Ballantyne Country Club"></div>
+      <div class="form-2">
+        <div><label class="form-label">Logo Initial</label><input type="text" id="s-initial" placeholder="B" maxlength="2"></div>
+        <div><label class="form-label">Courts Active</label><select id="s-sports"><option value="both">Tennis + Pickleball</option><option value="tennis">Tennis Only</option><option value="pickleball">Pickleball Only</option></select></div>
+      </div>
+      <div class="form-row"><label class="form-label">Number of Courts</label><input type="number" id="s-count" min="1" max="20" placeholder="6"></div>
+    </div>
+  </div>
+  <div class="s-section">
+    <div class="sec-label">Sponsor</div>
+    <div class="s-card">
+      <div class="form-row"><label class="form-label">Sponsor Name</label><input type="text" id="s-spname" placeholder="Genesis of Cary"></div>
+      <div class="form-row"><label class="form-label">Tagline</label><input type="text" id="s-sptag" placeholder="The Ultimate Driving Experience"></div>
+    </div>
+  </div>
+  <div class="s-section">
+    <div class="sec-label">Database</div>
+    <div class="s-card">
+      <div class="form-row"><label class="form-label">Club ID</label><input type="text" id="s-clubid" placeholder="ballantyne-cc"></div>
+      <div style="font-size:12px;color:var(--white-faint);margin-top:6px;line-height:1.6;">Must match your display file. Announcements save under this ID.</div>
+    </div>
+  </div>
+  <button class="btn btn-gold btn-full" onclick="saveSettings()" style="margin-top:4px;">Save Settings</button>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════
+// CONFIG
+// ═══════════════════════════════════════════════════
+const SB   = 'https://ykfvwqewnfnibpzytspn.supabase.co';
+const SK   = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlrZnZ3cWV3bmZuaWJwenl0c3BuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ4MjE2NzYsImV4cCI6MjA5MDM5NzY3Nn0.cnMztZVHDV3Hof-26aRi4NIM7wKwjzxAfoMBR3oItms';
+const H    = {'Content-Type':'application/json','apikey':SK,'Authorization':`Bearer ${SK}`,'Prefer':'return=representation'};
+const AI_URL = `${SB}/functions/v1/clubos-ai`;
+
+const sb = {
+  async get(p){const r=await fetch(SB+'/rest/v1'+p,{headers:H});if(!r.ok)throw r;return r.json();},
+  async post(p,b){const r=await fetch(SB+'/rest/v1'+p,{method:'POST',headers:H,body:JSON.stringify(b)});if(!r.ok)throw r;return r.json();},
+  async del(p){const r=await fetch(SB+'/rest/v1'+p,{method:'DELETE',headers:H});if(!r.ok)throw r;},
+  async upsert(p,b){const r=await fetch(SB+'/rest/v1'+p,{method:'POST',headers:{...H,'Prefer':'resolution=merge-duplicates'},body:JSON.stringify(b)});if(!r.ok)throw r;return r.json();}
+};
+
+let CFG = JSON.parse(localStorage.getItem('clubos-cfg')||'null') || {
+  clubName:'Ballantyne Country Club',logoInitial:'B',
+  clubId:'ballantyne-cc',clubUuid:'b652375e-952e-4675-94a6-cbca9cd3a6f8',
+  sports:'both',courtCount:6,
+  sponsor:{name:'Genesis of Cary',tagline:'The Ultimate Driving Experience'}
+};
+
+let selDate='',selSport='tennis',reservations=[],announcements=[],editAnnIdx=null;
+
+// helpers
+function ds(d){return d.toISOString().split('T')[0];}
+function fmt(t){if(!t)return'—';const[h,m]=t.split(':').map(Number),ap=h>=12?'PM':'AM';return`${h%12||12}:${String(m).padStart(2,'0')} ${ap}`;}
+function isNow(s,e){const n=new Date(),td=ds(n);if(selDate!==td)return false;const[sh,sm]=s.split(':').map(Number),[eh,em]=e.split(':').map(Number),nm=n.getHours()*60+n.getMinutes();return nm>=sh*60+sm&&nm<eh*60+em;}
+
+// ═══════════════════════════════════════════════════
+// TABS
+// ═══════════════════════════════════════════════════
+function switchTab(id,btn){
+  document.querySelectorAll('.tab-pane').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+id).classList.add('active');
+  btn.classList.add('active');
+}
+
+// ═══════════════════════════════════════════════════
+// DATE / SPORT
+// ═══════════════════════════════════════════════════
+function shiftDate(d){const dt=new Date(selDate+'T12:00:00');dt.setDate(dt.getDate()+d);selDate=ds(dt);updateDateUI();loadCourts();}
+function goToday(){selDate=ds(new Date());updateDateUI();loadCourts();}
+function updateDateUI(){
+  const d=new Date(selDate+'T12:00:00'),today=ds(new Date());
+  document.getElementById('dateDisplay').textContent=d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+  document.getElementById('statusDate').textContent=selDate===today?'Today':d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+  document.getElementById('courtsLabel').textContent=`Courts — ${selDate===today?'Today':d.toLocaleDateString('en-US',{month:'short',day:'numeric'})}`;
+}
+function selectSport(s,btn){selSport=s;document.querySelectorAll('.sport-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderCourts();}
+
+// ═══════════════════════════════════════════════════
+// COURTS
+// ═══════════════════════════════════════════════════
+async function loadCourts(){
+  document.getElementById('courtsGrid').innerHTML='<div class="loading-row">Loading…</div>';
+  try{reservations=await sb.get(`/court_reservations?club_id=eq.${CFG.clubUuid}&reservation_date=eq.${selDate}&status=neq.cancelled&order=court_number.asc,start_time.asc`);}
+  catch(e){reservations=[];}
+  renderCourts();
+}
+
+function renderCourts(){
+  const grid=document.getElementById('courtsGrid');
+  const filtered=reservations.filter(r=>r.sport===selSport);
+  let nums=[...new Set(filtered.map(r=>r.court_number))].sort((a,b)=>a-b);
+  const max=Math.max(CFG.courtCount||6,...nums);
+  for(let i=1;i<=max;i++)if(!nums.includes(i))nums.push(i);
+  nums.sort((a,b)=>a-b);
+  const sc=selSport==='tennis'?'sport-tennis':'sport-pickleball',sl=selSport==='tennis'?'Tennis':'Pickleball';
+  grid.innerHTML=nums.map(cn=>{
+    const slots=filtered.filter(r=>r.court_number===cn);
+    const sh=slots.length===0?`<div class="empty-court">Available — no bookings</div>`:
+      slots.map(s=>{
+        const now=isNow(s.start_time,s.end_time),dt=s.display_type||'booked';
+        const lbl={booked:'Booked',clinic:'Clinic',closed:'Closed',available:'Open Play'}[dt]||'Booked';
+        const nm=s.member_name||(dt==='clinic'?'Clinic':dt==='closed'?'Closed':'Open Play');
+        return`<div class="slot-row"><div class="slot-time ${now?'now':''}">${fmt(s.start_time)}–${fmt(s.end_time)}</div><div class="slot-dot dot-${dt}"></div><div class="slot-info"><div class="slot-name ${!s.member_name?'empty':''}">${nm}</div><div class="slot-sub">${lbl}${s.notes?' · '+s.notes:''}</div></div><button class="slot-del" onclick="delRes('${s.id}')">✕</button></div>`;
+      }).join('');
+    return`<div class="court-card"><div class="court-header"><div class="court-label">Court ${cn}</div><span class="court-sport-badge ${sc}">${sl}</span></div><div class="slots-list">${sh}</div></div>`;
+  }).join('');
+}
+
+function openAddForm(){document.getElementById('f-sport').value=selSport;document.getElementById('addForm').classList.add('open');document.getElementById('addForm').scrollIntoView({behavior:'smooth',block:'center'});}
+function closeAddForm(){document.getElementById('addForm').classList.remove('open');}
+
+async function saveReservation(prefill){
+  const court=parseInt(prefill?.court||document.getElementById('f-court').value);
+  const start=prefill?.start||document.getElementById('f-start').value;
+  const end=prefill?.end||document.getElementById('f-end').value;
+  const name=prefill?.name||document.getElementById('f-name').value.trim();
+  const sport=prefill?.sport||document.getElementById('f-sport').value;
+  const type=prefill?.type||document.getElementById('f-type').value;
+  const notes=prefill?.notes||document.getElementById('f-notes').value.trim();
+  if(!court||!start||!end){showToast('Court, start and end required','warn');return;}
+  try{
+    await sb.post('/court_reservations',{club_id:CFG.clubUuid,sport,court_number:court,reservation_date:selDate,start_time:start,end_time:end,member_name:name||(type==='clinic'?'Clinic':type==='closed'?'Closed':'Open Play'),notes,display_type:type,status:'confirmed'});
+    closeAddForm();
+    ['f-court','f-name','f-notes'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('f-start').value='08:00';document.getElementById('f-end').value='09:30';
+    await loadCourts();
+    return true;
+  }catch(e){showToast('Error saving reservation','warn');return false;}
+}
+
+async function delRes(id){
+  try{await sb.del(`/court_reservations?id=eq.${id}`);reservations=reservations.filter(r=>r.id!==id);renderCourts();showToast('Removed');}
+  catch(e){showToast('Could not delete','warn');}
+}
+
+async function delResBy(court,start){
+  const match=reservations.find(r=>r.court_number===court&&r.start_time&&r.start_time.startsWith(start));
+  if(match)await delRes(match.id);
+  else showToast(`No booking found on court ${court} at ${fmt(start+':00')}`, 'warn');
+}
+
+// ═══════════════════════════════════════════════════
+// ANNOUNCEMENTS
+// ═══════════════════════════════════════════════════
+async function loadAnn(){
+  try{const rows=await sb.get(`/club_content?club_id=eq.${CFG.clubId}&select=data&limit=1`);if(rows&&rows.length&&rows[0].data?.announcements)announcements=rows[0].data.announcements;}
+  catch(e){}
+  renderAnn();
+}
+
+function renderAnn(){
+  const list=document.getElementById('annList');
+  document.getElementById('annCount').textContent=`${announcements.filter(a=>a.status==='active').length} active`;
+  if(!announcements.length){list.innerHTML='<div class="loading-row" style="margin-bottom:14px;">No announcements yet.</div>';return;}
+  list.innerHTML=announcements.map((a,i)=>{
+    const pc=a.status==='active'?'pill-active':a.status==='scheduled'?'pill-scheduled':'pill-draft';
+    const pl=a.status==='active'?'Active':a.status==='scheduled'?'Scheduled':'Draft';
+    const dr=a.from?`${a.from}${a.until?' → '+a.until:''}`:'';
+    return`<div class="ann-card"><button class="ann-del" onclick="delAnn(${i})">×</button><div class="ann-top"><div class="ann-icon">${a.icon||'📢'}</div><div><div class="ann-title-text">${a.title||'Untitled'}</div><div class="ann-body-text">${a.body||''}</div></div></div><div class="ann-meta"><span class="pill ${pc}">${pl}</span>${dr?`<span class="ann-dates">${dr}</span>`:''}</div><div class="ann-actions"><button class="btn btn-ghost btn-sm" onclick="editAnn(${i})">Edit</button><button class="btn btn-ghost btn-sm" onclick="toggleAnn(${i})">${a.status==='active'?'Pause':'Activate'}</button></div></div>`;
+  }).join('');
+}
+
+function openAnnForm(pre){
+  editAnnIdx=pre?pre._idx:null;
+  document.getElementById('annFormTitle').textContent=editAnnIdx!==null?'Edit Announcement':'New Announcement';
+  const today=ds(new Date());
+  document.getElementById('af-icon').value=pre?.icon||'';
+  document.getElementById('af-title').value=pre?.title||'';
+  document.getElementById('af-body').value=pre?.body||'';
+  document.getElementById('af-status').value=pre?.status||'active';
+  document.getElementById('af-from').value=pre?.from||today;
+  document.getElementById('af-until').value=pre?.until||'';
+  document.getElementById('annForm').classList.add('open');
+  document.getElementById('annForm').scrollIntoView({behavior:'smooth',block:'center'});
+}
+function closeAnnForm(){document.getElementById('annForm').classList.remove('open');editAnnIdx=null;}
+function editAnn(i){openAnnForm({...announcements[i],_idx:i});}
+async function toggleAnn(i){announcements[i].status=announcements[i].status==='active'?'draft':'active';renderAnn();await persistAnn();showToast('Updated');}
+async function delAnn(i){announcements.splice(i,1);renderAnn();await persistAnn();showToast('Removed');}
+
+async function saveAnn(prefill){
+  const ann={
+    icon:(prefill?.icon||document.getElementById('af-icon').value.trim()||'📢'),
+    title:(prefill?.title||document.getElementById('af-title').value.trim()),
+    body:(prefill?.body||document.getElementById('af-body').value.trim()),
+    status:(prefill?.status||document.getElementById('af-status').value),
+    from:(prefill?.from||document.getElementById('af-from').value),
+    until:(prefill?.until||document.getElementById('af-until').value),
+  };
+  if(!ann.title){showToast('Title required','warn');return false;}
+  if(editAnnIdx!==null)announcements[editAnnIdx]=ann;
+  else announcements.push(ann);
+  closeAnnForm();
+  renderAnn();
+  await persistAnn();
+  return true;
+}
+
+async function persistAnn(){
+  try{await sb.upsert('/club_content',{club_id:CFG.clubId,data:{announcements}});}
+  catch(e){console.error(e);}
+}
+
+// ═══════════════════════════════════════════════════
+// VOICE ENGINE
+// ═══════════════════════════════════════════════════
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recCourts=null, recAnn=null, listeningMode=null;
+
+function setVoiceState(mode, state, hintText) {
+  const sfx = mode==='courts' ? 'Courts' : 'Ann';
+  const panel  = document.getElementById('voice'+sfx);
+  const mic    = document.getElementById('mic'+sfx);
+  const hint   = document.getElementById('hint'+sfx);
+  const trow   = document.getElementById('textRow'+sfx);
+  panel.className  = 'voice-panel' + (state?' '+state:'');
+  mic.className    = 'mic-btn' + (state?' '+state:'');
+  hint.className   = 'voice-hint' + (state?' '+state:'');
+  if(hintText) hint.textContent = hintText;
+  // Show text fallback if no speech support
+  if(!SpeechRecognition) trow.classList.add('visible');
+}
+
+function setTranscript(mode, text) {
+  const sfx = mode==='courts'?'Courts':'Ann';
+  const el = document.getElementById('transcript'+sfx);
+  el.textContent = '"'+text+'"';
+  el.classList.toggle('visible', !!text);
+}
+
+function setResult(mode, text, type='ok') {
+  const sfx = mode==='courts'?'Courts':'Ann';
+  const el = document.getElementById('result'+sfx);
+  el.textContent = text;
+  el.className = 'voice-result visible '+type;
+  setTimeout(()=>el.classList.remove('visible'), 5000);
+}
+
+function toggleVoice(mode) {
+  if (!SpeechRecognition) {
+    // Show text input as fallback
+    const sfx = mode==='courts'?'Courts':'Ann';
+    document.getElementById('textRow'+sfx).classList.toggle('visible');
+    return;
+  }
+
+  // Stop if already listening in this mode
+  const rec = mode==='courts' ? recCourts : recAnn;
+  if (listeningMode === mode && rec) { rec.stop(); return; }
+
+  // Stop other mode if running
+  if (listeningMode && listeningMode !== mode) {
+    if(recCourts) recCourts.stop();
+    if(recAnn) recAnn.stop();
+  }
+
+  const recognition = new SpeechRecognition();
+  recognition.continuous = false;
+  recognition.interimResults = true;
+  recognition.lang = 'en-US';
+
+  if(mode==='courts') recCourts=recognition; else recAnn=recognition;
+  listeningMode = mode;
+
+  recognition.onstart = () => {
+    setVoiceState(mode,'listening','Listening… speak your command');
+    setTranscript(mode,'');
+    setResult(mode,'',null);
+    document.getElementById('result'+(mode==='courts'?'Courts':'Ann')).classList.remove('visible');
+  };
+
+  recognition.onresult = (e) => {
+    let interim='',final='';
+    for(let i=e.resultIndex;i<e.results.length;i++){
+      if(e.results[i].isFinal)final+=e.results[i][0].transcript;
+      else interim+=e.results[i][0].transcript;
+    }
+    setTranscript(mode, final||interim);
+  };
+
+  recognition.onend = async () => {
+    listeningMode = null;
+    const sfx = mode==='courts'?'Courts':'Ann';
+    const text = document.getElementById('transcript'+sfx).textContent.replace(/^"|"$/g,'').trim();
+    if(!text){setVoiceState(mode,'','Nothing heard — tap mic to try again');return;}
+    setVoiceState(mode,'processing','ClubOS AI is thinking…');
+    await processVoiceCommand(mode, text);
+  };
+
+  recognition.onerror = (e) => {
+    listeningMode = null;
+    const msg = e.error==='not-allowed' ? 'Mic blocked — use text input below' : 'Mic error — tap to retry or use text below';
+    setVoiceState(mode,'',msg);
+    const sfx = mode==='courts'?'Courts':'Ann';
+    document.getElementById('textRow'+sfx).classList.add('visible');
+  };
+
+  recognition.start();
+}
+
+async function sendText(mode) {
+  const sfx = mode==='courts'?'Courts':'Ann';
+  const text = document.getElementById('textInput'+sfx).value.trim();
+  if(!text) return;
+  setTranscript(mode, text);
+  setVoiceState(mode,'processing','ClubOS AI is thinking…');
+  document.getElementById('textInput'+sfx).value='';
+  await processVoiceCommand(mode, text);
+}
+
+async function processVoiceCommand(mode, command) {
+  try {
+    const res = await fetch(AI_URL, {
+      method: 'POST',
+      headers: { 'Content-Type':'application/json' },
+      body: JSON.stringify({
+        command, mode,
+        context: {
+          clubName: CFG.clubName,
+          sport: selSport,
+          courtCount: CFG.courtCount,
+          date: selDate
+        }
+      })
+    });
+
+    if(!res.ok) throw new Error('AI unavailable');
+    const action = await res.json();
+    await handleVoiceAction(mode, action);
+
+  } catch(e) {
+    setVoiceState(mode,'','Ready — tap mic to speak');
+    setResult(mode, 'Could not reach ClubOS AI — check connection', 'err');
+  }
+}
+
+async function handleVoiceAction(mode, action) {
+  setVoiceState(mode,'','Ready — tap mic to speak');
+
+  if(action.action === 'unclear') {
+    setResult(mode, '💬 ' + (action.message||'Could you be more specific?'), 'warn');
+    return;
+  }
+
+  if(mode === 'courts') {
+    if(action.action === 'add') {
+      const ok = await saveReservation({
+        court: action.court,
+        start: action.start,
+        end: action.end,
+        name: action.name||'',
+        sport: action.sport||selSport,
+        type: action.type||'booked',
+        notes: action.notes||''
+      });
+      if(ok) setResult(mode, `✓ Booked Court ${action.court} — ${fmt(action.start)} to ${fmt(action.end)}`, 'ok');
+    } else if(action.action === 'delete') {
+      await delResBy(action.court, action.start);
+      setResult(mode, `✓ Removed Court ${action.court} at ${fmt(action.start)}`, 'ok');
+    } else if(action.action === 'update') {
+      const match = reservations.find(r=>r.court_number===action.court&&r.start_time&&r.start_time.startsWith(action.start));
+      if(match) {
+        try {
+          await fetch(`${SB}/rest/v1/court_reservations?id=eq.${match.id}`, {method:'PATCH',headers:H,body:JSON.stringify({[action.field]:action.value})});
+          await loadCourts();
+          setResult(mode, `✓ Updated Court ${action.court}`, 'ok');
+        } catch(e){ setResult(mode,'Update failed','err'); }
+      } else { setResult(mode, `No booking found to update`, 'warn'); }
+    }
+  }
+
+  if(mode === 'announcements') {
+    if(action.action === 'add') {
+      editAnnIdx = null;
+      const ok = await saveAnn(action);
+      if(ok) setResult(mode, `✓ "${action.title}" added`, 'ok');
+    } else if(action.action === 'delete') {
+      const idx = announcements.findIndex(a=>a.title.toLowerCase().includes((action.titleMatch||'').toLowerCase()));
+      if(idx>=0){await delAnn(idx);setResult(mode,`✓ Removed "${announcements[idx]?.title||action.titleMatch}"`, 'ok');}
+      else setResult(mode, `Couldn't find that announcement`, 'warn');
+    } else if(action.action === 'edit') {
+      const idx = announcements.findIndex(a=>a.title.toLowerCase().includes((action.titleMatch||'').toLowerCase()));
+      if(idx>=0){
+        announcements[idx][action.field]=action.value;
+        renderAnn(); await persistAnn();
+        setResult(mode, `✓ Updated "${announcements[idx].title}"`, 'ok');
+      } else setResult(mode, `Couldn't find that announcement`, 'warn');
+    } else if(action.action === 'toggle') {
+      const idx = announcements.findIndex(a=>a.title.toLowerCase().includes((action.titleMatch||'').toLowerCase()));
+      if(idx>=0){await toggleAnn(idx);setResult(mode,`✓ Toggled "${announcements[idx]?.title||action.titleMatch}"`, 'ok');}
+      else setResult(mode, `Couldn't find that announcement`, 'warn');
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// SETTINGS
+// ═══════════════════════════════════════════════════
+function loadSettingsUI(){
+  document.getElementById('s-name').value=CFG.clubName||'';
+  document.getElementById('s-initial').value=CFG.logoInitial||'';
+  document.getElementById('s-sports').value=CFG.sports||'both';
+  document.getElementById('s-count').value=CFG.courtCount||6;
+  document.getElementById('s-spname').value=CFG.sponsor?.name||'';
+  document.getElementById('s-sptag').value=CFG.sponsor?.tagline||'';
+  document.getElementById('s-clubid').value=CFG.clubId||'';
+}
+function saveSettings(){
+  CFG.clubName=document.getElementById('s-name').value;
+  CFG.logoInitial=document.getElementById('s-initial').value;
+  CFG.sports=document.getElementById('s-sports').value;
+  CFG.courtCount=parseInt(document.getElementById('s-count').value)||6;
+  CFG.sponsor={name:document.getElementById('s-spname').value,tagline:document.getElementById('s-sptag').value};
+  CFG.clubId=document.getElementById('s-clubid').value;
+  localStorage.setItem('clubos-cfg',JSON.stringify(CFG));
+  applyBranding(); showToast('Settings saved');
+}
+function applyBranding(){
+  document.getElementById('logoMark').textContent=CFG.logoInitial||'C';
+  document.getElementById('clubChip').textContent=CFG.clubName||'Your Club';
+  const ts=document.getElementById('btn-tennis'),pb=document.getElementById('btn-pickleball');
+  if(CFG.sports==='tennis'){ts.style.display='';pb.style.display='none';selSport='tennis';}
+  else if(CFG.sports==='pickleball'){ts.style.display='none';pb.style.display='';selSport='pickleball';}
+  else{ts.style.display='';pb.style.display='';}
+}
+
+// ═══════════════════════════════════════════════════
+// PUBLISH
+// ═══════════════════════════════════════════════════
+async function publishAll(){
+  const btn=document.getElementById('publishBtn');
+  btn.classList.add('busy');btn.textContent='⏳ Publishing…';
+  try{await persistAnn();showToast('✓ Published to display');}
+  catch(e){showToast('Connection error','warn');}
+  btn.classList.remove('busy');btn.innerHTML='↑ Publish';
+}
+
+// ═══════════════════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════════════════
+function showToast(msg,type){
+  const t=document.getElementById('toast');
+  t.textContent=(type==='warn'?'⚠ ':'✓ ')+msg;
+  t.style.background=type==='warn'?'#8B6914':'var(--green)';
+  t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2600);
+}
+
+// ═══════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════
+async function init(){
+  selDate = ds(new Date());
+  applyBranding(); loadSettingsUI(); updateDateUI();
+  document.getElementById('af-from').value = ds(new Date());
+  if(!SpeechRecognition){
+    document.getElementById('textRowCourts').classList.add('visible');
+    document.getElementById('textRowAnn').classList.add('visible');
+    document.getElementById('hintCourts').textContent='Type your command below (voice not supported in this browser)';
+    document.getElementById('hintAnn').textContent='Type your command below (voice not supported in this browser)';
+  }
+  await Promise.all([loadCourts(), loadAnn()]);
+}
+init();
+</script>
+</body>
+</html>
